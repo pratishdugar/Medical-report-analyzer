@@ -23,7 +23,7 @@
   --bad-soft: #fde8ec;
   --info: #1d4ed8;
   --info-soft: #e8eefc;
-  /* data-viz: validated categorical slots (blue, orange) — see docs/DESIGN.md */
+  /* data-viz: categorical slots (blue, orange) validated for CVD separation and contrast in both themes */
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-muted: #9aa8a4;

@@ -15,6 +15,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Never trace uploaded (encrypted) health data, samples or tests into build output.
+  outputFileTracingExcludes: { "*": ["./data/**", "./samples/**", "./tests/**", "./.env*"] },
   poweredByHeader: false,
   serverExternalPackages: ["@node-rs/argon2", "pg", "unpdf", "nodemailer"],
   turbopack: {

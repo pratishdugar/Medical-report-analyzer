@@ -33,8 +33,9 @@ export default async function ComparePage({ searchParams }: PageProps<"/compare"
   const aId = pickId(sp.a, reps[1].id);
   const bId = pickId(sp.b, reps[0].id);
   const [ra, rb] = await Promise.all([getReport(user.id, aId), getReport(user.id, bId)]);
+  // Unconfirmed values (couldn't be verified against the document) are left out of comparisons.
   const toObs = (rows: NonNullable<typeof ra>["observations"]): CompareObs[] =>
-    rows.map((o) => ({ code: o.biomarkerCode, name: o.name, valueNum: o.valueNum, valueText: o.valueText, unit: o.unit, refLow: o.refLow, refHigh: o.refHigh, flag: o.flag }));
+    rows.filter((o) => o.verified).map((o) => ({ code: o.biomarkerCode, name: o.name, valueNum: o.valueNum, valueText: o.valueText, unit: o.unit, refLow: o.refLow, refHigh: o.refHigh, flag: o.flag }));
   // Always compare chronologically: older on the left.
   const dateOf = (r: NonNullable<typeof ra>) => r.report.reportDate ?? r.report.createdAt.toISOString().slice(0, 10);
   const [older, newer] = ra && rb && dateOf(ra) > dateOf(rb) ? [rb, ra] : [ra, rb];

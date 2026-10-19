@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://sehat:sehat@localhost:5432/sehat_test
+      ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: System packages (OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr poppler-utils
+      - name: Create non-superuser app role (so RLS is enforced in tests)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c "CREATE ROLE sehat LOGIN PASSWORD 'sehat' NOSUPERUSER NOBYPASSRLS;"
+          psql -h localhost -U postgres -c "CREATE DATABASE sehat_test OWNER sehat;"
+          psql -h localhost -U postgres -c "CREATE DATABASE sehat_e2e OWNER sehat;"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: End-to-end isolation tests
+        env:
+          DATABASE_URL: postgres://sehat:sehat@localhost:5432/sehat_e2e
+          E2E_DATABASE_URL: postgres://sehat:sehat@localhost:5432/sehat_e2e
+          APP_URL: http://localhost:3000
+          STORAGE_DIR: /tmp/sehat-uploads
+        run: |
+          npm run db:migrate
+          npx playwright install --with-deps chromium
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          (cd .next/standalone && PORT=3000 node server.js &)
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/api/health && break; sleep 1; done
+          E2E_BASE_URL=http://localhost:3000 npm run test:e2e
